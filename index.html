@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JAMBO SAMAKI - Gestionnaire</title>
+  
+  <!-- Manifest pour PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3CB371">
+
+  <!-- Styles simples et mobile-friendly -->
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
+    header { background: #3CB371; color: white; padding: 1rem; text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+    th { background: #3CB371; color: white; }
+    select, input { padding: 0.3rem; margin: 0.2rem 0; width: 100%; box-sizing: border-box; }
+    button { padding: 0.5rem; margin: 0.3rem 0; background: #3CB371; color: white; border: none; cursor: pointer; width: 100%; }
+    button:hover { background: #2e8b57; }
+    .container { padding: 1rem; }
+    h2 { margin-top: 2rem; }
+    .admin-btn { margin: 0.5rem 0; }
+  </style>
+
+  <!-- Service Worker pour PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+      .then(() => console.log('Service Worker enregistré pour JAMBO SAMAKI'))
+      .catch(err => console.log('Erreur Service Worker:', err));
+    }
+  </script>
+
+  <!-- jsPDF pour export PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>JAMBO SAMAKI - Gestionnaire de Commandes</h1>
+</header>
+
+<div class="container">
+  <h2>Ajouter une commande</h2>
+  <label>Nom du client :</label>
+  <input type="text" id="clientName" placeholder="Nom complet">
+
+  <label>Produit :</label>
+  <select id="product">
+    <option>Sol</option>
+    <option>Capitaine</option>
+    <option>Malua</option>
+    <option>Crevettes</option>
+    <option>Mabundu</option>
+    <option>Poisson-chat</option>
+  </select>
+
+  <label>Quantité :</label>
+  <input type="text" id="quantity" placeholder="Ex: 2 kg">
+
+  <label>Adresse de livraison :</label>
+  <input type="text" id="address" placeholder="Adresse complète">
+
+  <label>Numéro WhatsApp :</label>
+  <input type="text" id="whatsapp" placeholder="+234xxxxxxxxxx">
+
+  <button onclick="addOrder()">Ajouter la commande</button>
+
+  <h2>Tableau des commandes</h2>
+  <table id="ordersTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nom</th>
+        <th>Produit</th>
+        <th>Quantité</th>
+        <th>Adresse</th>
+        <th>WhatsApp</th>
+        <th>Statut</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <button class="admin-btn" onclick="exportPDF()">Exporter les commandes en PDF</button>
+
+  <h2>Historique clients</h2>
+  <table id="clientsTable">
+    <thead>
+      <tr>
+        <th>Nom</th>
+        <th>WhatsApp</th>
+        <th>Nombre de commandes</th>
+        <th>Produits commandés</th>
+        <th>Dernière commande</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  let orders = JSON.parse(localStorage.getItem('orders')) || [];
+
+  function addOrder() {
+    const name = document.getElementById('clientName').value;
+    const product = document.getElementById('product').value;
+    const quantity = document.getElementById('quantity').value;
+    const address = document.getElementById('address').value;
+    const whatsapp = document.getElementById('whatsapp').value;
+    const date = new Date().toLocaleString();
+    if(!name || !product || !quantity || !address || !whatsapp) { alert('Veuillez remplir tous les champs'); return; }
+
+    const order = {id: orders.length+1, name, product, quantity, address, whatsapp, status: 'En attente', date};
+    orders.push(order);
+    localStorage.setItem('orders', JSON.stringify(orders));
+    renderOrders();
+    renderClients();
+    clearForm();
+  }
+
+  function clearForm() {
+    document.getElementById('clientName').value = '';
+    document.getElementById('quantity').value = '';
+    document.getElementById('address').value = '';
+    document.getElementById('whatsapp').value = '';
+  }
+
+  function renderOrders() {
+    const tbody = document.getElementById('ordersTable').querySelector('tbody');
+    tbody.innerHTML = '';
+    orders.forEach(order => {
+      const row = `<tr>
+        <td>${order.id}</td>
+        <td>${order.name}</td>
+        <td>${order.product}</td>
+        <td>${order.quantity}</td>
+        <td>${order.address}</td>
+        <td>${order.whatsapp}</td>
+        <td>${order.status}</td>
+        <td>${order.date}</td>
+      </tr>`;
+      tbody.innerHTML += row;
+    });
+  }
+
+  function renderClients() {
+    const clients = {};
+    orders.forEach(o => {
+      if(!clients[o.whatsapp]) clients[o.whatsapp] = {name: o.name, whatsapp: o.whatsapp, count:0, products:[], last: ''};
+      clients[o.whatsapp].count++;
+      clients[o.whatsapp].products.push(o.product);
+      clients[o.whatsapp].last = o.date;
+    });
+    const tbody = document.getElementById('clientsTable').querySelector('tbody');
+    tbody.innerHTML = '';
+    Object.values(clients).forEach(c => {
+      const row = `<tr>
+        <td>${c.name}</td>
+        <td>${c.whatsapp}</td>
+        <td>${c.count}</td>
+        <td>${c.products.join(', ')}</td>
+        <td>${c.last}</td>
+      </tr>`;
+      tbody.innerHTML += row;
+    });
+  }
+
+  function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('JAMBO SAMAKI - Commandes', 10, 10);
+    let y = 20;
+    orders.forEach(o => {
+      doc.setFontSize(12);
+      doc.text(`${o.id}. ${o.name} | ${o.product} | ${o.quantity} | ${o.address} | ${o.whatsapp} | ${o.status} | ${o.date}`, 10, y);
+      y+=10;
+      if(y>280){ doc.addPage(); y=20; }
+    });
+    doc.save('commandes-jambo-samaki.pdf');
+  }
+
+  // Initial render
+  renderOrders();
+  renderClients();
+</script>
+
+</body>
+</html>

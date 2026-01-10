@@ -1,0 +1,21 @@
+{
+  "name": "JAMBO SAMAKI - Gestionnaire",
+  "short_name": "JAMBO SAMAKI",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3CB371",
+  "description": "Gestionnaire de commandes mobile pour JAMBO SAMAKI",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
