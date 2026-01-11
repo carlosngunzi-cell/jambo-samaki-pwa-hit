@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JAMBO SAMAKI – Gestionnaire Admin</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1bb5a7">
+
+<!-- jsPDF pour export PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- Firebase SDK (multi-admin) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+  // Configuration Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyC89JFEcpTFPXNZh9qhmu7nnm_mia6Q8YY",
+    authDomain: "jambo-samaki-admin.firebaseapp.com",
+    projectId: "jambo-samaki-admin",
+    storageBucket: "jambo-samaki-admin.appspot.com",
+    messagingSenderId: "189558490878",
+    appId: "1:189558490878:web:fa90455a2a829ef446c7af"
+  };
+
+  // Initialiser Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const ordersCollection = collection(db, "orders");
+
+  // Expose globalement pour les fonctions
+  window.db = db;
+  window.ordersCollection = ordersCollection;
+</script>
+
+<style>
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(to bottom, #00c6ff, #0072ff);
+  min-height: 100vh;
+}
+header {
+  background: rgba(0, 128, 128, 0.95);
+  color: white;
+  text-align: center;
+  padding: 1.3rem;
+  font-size: 1.3rem;
+}
+.container {
+  padding: 1rem;
+}
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+}
+h2 { color: #008080; }
+input, select {
+  width: 100%;
+  padding: 0.6rem;
+  margin: 0.3rem 0 0.8rem 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+button {
+  background: #20b2aa;
+  color: white;
+  border: none;
+  padding: 0.6rem;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+}
+button:hover { background: #178f8f; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+th {
+  background: #20b2aa;
+  color: white;
+}
+th, td {
+  border: 1px solid #ddd;
+  padding: 0.4rem;
+  text-align: left;
+}
+.status { border-radius: 8px; }
+.whatsapp-btn { background: #25D366; border-radius: 8px; }
+</style>
+</head>
+
+<body>
+<header>
+🌊 JAMBO SAMAKI – Gestionnaire ADMIN 🐟
+</header>
+
+<div class="container">
+
+<div class="card">
+<h2>➕ Ajouter une commande</h2>
+<input id="clientName" placeholder="Nom du client">
+<select id="product">
+  <option>Sol</option>
+  <option>Capitaine</option>
+  <option>Malua</option>
+  <option>Crevettes</option>
+  <option>Mabundu</option>
+  <option>Poisson-chat</option>
+</select>
+<input id="quantity" placeholder="Quantité (ex: 5 kg)">
+<input id="address" placeholder="Adresse de livraison">
+<input id="whatsapp" placeholder="+243xxxxxxxxx">
+<button onclick="addOrder()">Ajouter la commande</button>
+</div>
+
+<div class="card">
+<h2>📦 Commandes</h2>
+<table>
+<thead>
+<tr>
+<th>#</th><th>Nom</th><th>Produit</th><th>Qté</th>
+<th>Adresse</th><th>WhatsApp</th><th>Statut</th><th>Action</th>
+</tr>
+</thead>
+<tbody id="ordersTable"></tbody>
+</table>
+<button onclick="exportPDF()">📄 Exporter PDF</button>
+</div>
+
+<div class="card">
+<h2>👥 Historique clients</h2>
+<table>
+<thead>
+<tr>
+<th>Nom</th><th>WhatsApp</th><th>Commandes</th><th>Produits</th><th>Dernière</th>
+</tr>
+</thead>
+<tbody id="clientsTable"></tbody>
+</table>
+</div>
+
+<script type="module">
+import { addDoc, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+async function addOrder() {
+  const o = {
+    name: clientName.value,
+    product: product.value,
+    quantity: quantity.value,
+    address: address.value,
+    whatsapp: whatsapp.value,
+    status: "En attente",
+    date: new Date().toLocaleString()
+  };
+  if(!o.name||!o.quantity||!o.address||!o.whatsapp){
+    alert("Champs manquants");
+    return;
+  }
+  await addDoc(window.ordersCollection, o);
+  clientName.value = quantity.value = address.value = whatsapp.value = "";
+}
+
+function openWA(num){
+  window.open("https://wa.me/"+num.replace("+",""),"_blank");
+}
+
+function updateStatusFirestore(id, status){
+  const orderRef = doc(window.db, "orders", id);
+  updateDoc(orderRef, {status});
+}
+
+// Temps réel
+onSnapshot(window.ordersCollection, snapshot => {
+  const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+  // Table commandes
+  const t = document.getElementById("ordersTable");
+  t.innerHTML = "";
+  orders.forEach((o,i)=>{
+    t.innerHTML += `
+<tr>
+<td>${i+1}</td>
+<td>${o.name}</td>
+<td>${o.product}</td>
+<td>${o.quantity}</td>
+<td>${o.address}</td>
+<td>${o.whatsapp}</td>
+<td>
+<select class="status" onchange="updateStatusFirestore('${o.id}', this.value)">
+<option ${o.status=="En attente"?"selected":""}>En attente</option>
+<option ${o.status=="En livraison"?"selected":""}>En livraison</option>
+<option ${o.status=="Livré"?"selected":""}>Livré</option>
+<option ${o.status=="Annulé"?"selected":""}>Annulé</option>
+</select>
+</td>
+<td><button class="whatsapp-btn" onclick="openWA('${o.whatsapp}')">WhatsApp</button></td>
+</tr>`;
+  });
+
+  // Table clients
+  const clients = {};
+  orders.forEach(o=>{
+    if(!clients[o.whatsapp]) clients[o.whatsapp]={name:o.name,count:0,prods:[],last:""};
+    clients[o.whatsapp].count++;
+    clients[o.whatsapp].prods.push(o.product);
+    clients[o.whatsapp].last=o.date;
+  });
+  const c = document.getElementById("clientsTable");
+  c.innerHTML = "";
+  Object.entries(clients).forEach(([num,cl])=>{
+    c.innerHTML+=`
+<tr>
+<td>${cl.name}</td>
+<td>${num}</td>
+<td>${cl.count}</td>
+<td>${cl.prods.join(", ")}</td>
+<td>${cl.last}</td>
+</tr>`;
+  });
+});
+
+// Export PDF
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
+  let y=10;
+  pdf.text("JAMBO SAMAKI – Commandes",10,y);
+  onSnapshot(window.ordersCollection, snapshot=>{
+    snapshot.docs.forEach(doc=>{
+      const o = doc.data();
+      pdf.text(`${o.name} | ${o.product} | ${o.quantity} | ${o.status}`,10,y);
+      y+=8;
+      if(y>280){pdf.addPage(); y=10;}
+    });
+    pdf.save("jambo-samaki-commandes.pdf");
+  });
+}
+</script>
+
+</body>
+</html>
