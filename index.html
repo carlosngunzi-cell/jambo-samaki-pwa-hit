@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JAMBO SAMAKI – Gestionnaire Admin</title>
 <meta name="theme-color" content="#1bb5a7">
+
 <style>
 body{margin:0;font-family:"Segoe UI",sans-serif;background:linear-gradient(to bottom,#00c6ff,#0072ff);min-height:100vh}
 header{background:rgba(0,128,128,0.95);color:white;text-align:center;padding:1.3rem;font-size:1.3rem}
@@ -67,101 +68,100 @@ th,td{border:1px solid #ddd;padding:.4rem;text-align:left}
 </div>
 
 <!-- Firebase SDK -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC89JFEcpTFPXNZh9qhmu7nnm_mia6Q8YY",
-  authDomain: "jambo-samaki-admin.firebaseapp.com",
-  projectId: "jambo-samaki-admin",
-  storageBucket: "jambo-samaki-admin.appspot.com",
-  messagingSenderId: "189558490878",
-  appId: "1:189558490878:web:fa90455a2a829ef446c7af"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const ordersCollection = collection(db, "orders");
-
-// Ajouter une commande
-window.addOrder = async function(){
-  const o = {
-    name: document.getElementById("clientName").value,
-    product: document.getElementById("product").value,
-    quantity: document.getElementById("quantity").value,
-    address: document.getElementById("address").value,
-    whatsapp: document.getElementById("whatsapp").value,
-    status: "En attente",
-    date: new Date().toLocaleString()
+<script>
+  // Config Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyC89JFEcpTFPXNZh9qhmu7nnm_mia6Q8YY",
+    authDomain: "jambo-samaki-admin.firebaseapp.com",
+    projectId: "jambo-samaki-admin",
+    storageBucket: "jambo-samaki-admin.appspot.com",
+    messagingSenderId: "189558490878",
+    appId: "1:189558490878:web:fa90455a2a829ef446c7af"
   };
-  if(!o.name || !o.quantity || !o.address || !o.whatsapp){
-    alert("Champs manquants");
-    return;
-  }
-  await addDoc(ordersCollection, o);
-  document.getElementById("clientName").value="";
-  document.getElementById("quantity").value="";
-  document.getElementById("address").value="";
-  document.getElementById("whatsapp").value="";
-};
 
-// Modifier statut
-window.updateStatusFirestore = async function(id,status){
-  const orderRef = doc(db,"orders",id);
-  await updateDoc(orderRef,{status});
-};
+  // Init Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const ordersCollection = db.collection("orders");
 
-// Ouvrir WhatsApp
-window.openWA = function(num){
-  window.open("https://wa.me/"+num.replace("+",""),"_blank");
-};
+  // Ajouter commande
+  window.addOrder = async function() {
+    const name = document.getElementById("clientName").value;
+    const product = document.getElementById("product").value;
+    const quantity = document.getElementById("quantity").value;
+    const address = document.getElementById("address").value;
+    const whatsapp = document.getElementById("whatsapp").value;
 
-// Observer Firestore en temps réel
-onSnapshot(ordersCollection,snapshot=>{
-  const orders = snapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
+    if(!name || !quantity || !address || !whatsapp){
+      alert("Remplis tous les champs");
+      return;
+    }
 
-  // Table commandes
-  const t = document.getElementById("ordersTable");
-  t.innerHTML="";
-  orders.forEach((o,i)=>{
-    t.innerHTML+=`<tr>
+    await ordersCollection.add({
+      name, product, quantity, address, whatsapp,
+      status: "En attente",
+      date: new Date().toLocaleString()
+    });
+
+    document.getElementById("clientName").value = "";
+    document.getElementById("quantity").value = "";
+    document.getElementById("address").value = "";
+    document.getElementById("whatsapp").value = "";
+  };
+
+  // Modifier statut
+  window.updateStatus = async function(id,status){
+    await ordersCollection.doc(id).update({status});
+  };
+
+  // Observer commandes
+  ordersCollection.onSnapshot(snapshot=>{
+    const orders = snapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
+
+    // Table commandes
+    const t = document.getElementById("ordersTable");
+    t.innerHTML = "";
+    orders.forEach((o,i)=>{
+      t.innerHTML += `<tr>
 <td>${i+1}</td>
 <td>${o.name}</td>
 <td>${o.product}</td>
 <td>${o.quantity}</td>
 <td>${o.address}</td>
 <td>${o.whatsapp}</td>
-<td><select class="status" onchange="updateStatusFirestore('${o.id}', this.value)">
+<td><select onchange="updateStatus('${o.id}', this.value)">
 <option ${o.status=="En attente"?"selected":""}>En attente</option>
 <option ${o.status=="En livraison"?"selected":""}>En livraison</option>
 <option ${o.status=="Livré"?"selected":""}>Livré</option>
 <option ${o.status=="Annulé"?"selected":""}>Annulé</option>
 </select></td>
-<td><button class="whatsapp-btn" onclick="openWA('${o.whatsapp}')">WhatsApp</button></td>
+<td><button onclick="window.open('https://wa.me/${o.whatsapp.replace('+','')}','_blank')">WhatsApp</button></td>
 </tr>`;
-  });
+    });
 
-  // Historique clients
-  const clients = {};
-  orders.forEach(o=>{
-    if(!clients[o.whatsapp]) clients[o.whatsapp]={name:o.name,count:0,prods:[],last:""};
-    clients[o.whatsapp].count++;
-    clients[o.whatsapp].prods.push(o.product);
-    clients[o.whatsapp].last=o.date;
-  });
-  const c = document.getElementById("clientsTable");
-  c.innerHTML="";
-  Object.entries(clients).forEach(([num,cl])=>{
-    c.innerHTML+=`<tr>
+    // Historique clients
+    const clients = {};
+    orders.forEach(o=>{
+      if(!clients[o.whatsapp]) clients[o.whatsapp]={name:o.name,count:0,prods:[],last:""};
+      clients[o.whatsapp].count++;
+      clients[o.whatsapp].prods.push(o.product);
+      clients[o.whatsapp].last=o.date;
+    });
+    const c = document.getElementById("clientsTable");
+    c.innerHTML = "";
+    Object.entries(clients).forEach(([num,cl])=>{
+      c.innerHTML += `<tr>
 <td>${cl.name}</td>
 <td>${num}</td>
 <td>${cl.count}</td>
 <td>${cl.prods.join(", ")}</td>
 <td>${cl.last}</td>
 </tr>`;
+    });
   });
-});
 </script>
 
 </body>
