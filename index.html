@@ -1,192 +1,257 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JAMBO SAMAKI - Gestionnaire</title>
-  
-  <!-- Manifest pour PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#3CB371">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JAMBO SAMAKI – Gestionnaire Admin</title>
 
-  <!-- Styles simples et mobile-friendly -->
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
-    header { background: #3CB371; color: white; padding: 1rem; text-align: center; }
-    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-    th { background: #3CB371; color: white; }
-    select, input { padding: 0.3rem; margin: 0.2rem 0; width: 100%; box-sizing: border-box; }
-    button { padding: 0.5rem; margin: 0.3rem 0; background: #3CB371; color: white; border: none; cursor: pointer; width: 100%; }
-    button:hover { background: #2e8b57; }
-    .container { padding: 1rem; }
-    h2 { margin-top: 2rem; }
-    .admin-btn { margin: 0.5rem 0; }
-  </style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1bb5a7">
 
-  <!-- Service Worker pour PWA -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-      .then(() => console.log('Service Worker enregistré pour JAMBO SAMAKI'))
-      .catch(err => console.log('Erreur Service Worker:', err));
-    }
-  </script>
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-  <!-- jsPDF pour export PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(to bottom, #00c6ff, #0072ff);
+  min-height: 100vh;
+}
+
+header {
+  background: rgba(0, 128, 128, 0.95);
+  color: white;
+  text-align: center;
+  padding: 1.3rem;
+  font-size: 1.3rem;
+}
+
+.container {
+  padding: 1rem;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+}
+
+h2 {
+  color: #008080;
+}
+
+input, select {
+  width: 100%;
+  padding: 0.6rem;
+  margin: 0.3rem 0 0.8rem 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  background: #20b2aa;
+  color: white;
+  border: none;
+  padding: 0.6rem;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+}
+
+button:hover {
+  background: #178f8f;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th {
+  background: #20b2aa;
+  color: white;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 0.4rem;
+  text-align: left;
+}
+
+.status {
+  border-radius: 8px;
+}
+
+.whatsapp-btn {
+  background: #25D366;
+  border-radius: 8px;
+}
+</style>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js');
+}
+</script>
 </head>
+
 <body>
 
 <header>
-  <h1>JAMBO SAMAKI - Gestionnaire de Commandes</h1>
+🌊 JAMBO SAMAKI – Gestionnaire ADMIN 🐟
 </header>
 
 <div class="container">
-  <h2>Ajouter une commande</h2>
-  <label>Nom du client :</label>
-  <input type="text" id="clientName" placeholder="Nom complet">
 
-  <label>Produit :</label>
-  <select id="product">
-    <option>Sol</option>
-    <option>Capitaine</option>
-    <option>Malua</option>
-    <option>Crevettes</option>
-    <option>Mabundu</option>
-    <option>Poisson-chat</option>
-  </select>
+<div class="card">
+<h2>➕ Ajouter une commande</h2>
 
-  <label>Quantité :</label>
-  <input type="text" id="quantity" placeholder="Ex: 2 kg">
+<input id="clientName" placeholder="Nom du client">
+<select id="product">
+  <option>Sol</option>
+  <option>Capitaine</option>
+  <option>Malua</option>
+  <option>Crevettes</option>
+  <option>Mabundu</option>
+  <option>Poisson-chat</option>
+</select>
+<input id="quantity" placeholder="Quantité (ex: 5 kg)">
+<input id="address" placeholder="Adresse de livraison">
+<input id="whatsapp" placeholder="+243xxxxxxxxx">
 
-  <label>Adresse de livraison :</label>
-  <input type="text" id="address" placeholder="Adresse complète">
+<button onclick="addOrder()">Ajouter la commande</button>
+</div>
 
-  <label>Numéro WhatsApp :</label>
-  <input type="text" id="whatsapp" placeholder="+234xxxxxxxxxx">
+<div class="card">
+<h2>📦 Commandes</h2>
+<table>
+<thead>
+<tr>
+<th>#</th><th>Nom</th><th>Produit</th><th>Qté</th>
+<th>Adresse</th><th>WhatsApp</th><th>Statut</th><th>Action</th>
+</tr>
+</thead>
+<tbody id="ordersTable"></tbody>
+</table>
 
-  <button onclick="addOrder()">Ajouter la commande</button>
+<button onclick="exportPDF()">📄 Exporter PDF</button>
+</div>
 
-  <h2>Tableau des commandes</h2>
-  <table id="ordersTable">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Nom</th>
-        <th>Produit</th>
-        <th>Quantité</th>
-        <th>Adresse</th>
-        <th>WhatsApp</th>
-        <th>Statut</th>
-        <th>Date</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<div class="card">
+<h2>👥 Historique clients</h2>
+<table>
+<thead>
+<tr>
+<th>Nom</th><th>WhatsApp</th><th>Commandes</th><th>Produits</th><th>Dernière</th>
+</tr>
+</thead>
+<tbody id="clientsTable"></tbody>
+</table>
+</div>
 
-  <button class="admin-btn" onclick="exportPDF()">Exporter les commandes en PDF</button>
-
-  <h2>Historique clients</h2>
-  <table id="clientsTable">
-    <thead>
-      <tr>
-        <th>Nom</th>
-        <th>WhatsApp</th>
-        <th>Nombre de commandes</th>
-        <th>Produits commandés</th>
-        <th>Dernière commande</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
 </div>
 
 <script>
-  let orders = JSON.parse(localStorage.getItem('orders')) || [];
+let orders = JSON.parse(localStorage.getItem("orders")) || [];
 
-  function addOrder() {
-    const name = document.getElementById('clientName').value;
-    const product = document.getElementById('product').value;
-    const quantity = document.getElementById('quantity').value;
-    const address = document.getElementById('address').value;
-    const whatsapp = document.getElementById('whatsapp').value;
-    const date = new Date().toLocaleString();
-    if(!name || !product || !quantity || !address || !whatsapp) { alert('Veuillez remplir tous les champs'); return; }
-
-    const order = {id: orders.length+1, name, product, quantity, address, whatsapp, status: 'En attente', date};
-    orders.push(order);
-    localStorage.setItem('orders', JSON.stringify(orders));
-    renderOrders();
-    renderClients();
-    clearForm();
+function addOrder() {
+  const o = {
+    name: clientName.value,
+    product: product.value,
+    quantity: quantity.value,
+    address: address.value,
+    whatsapp: whatsapp.value,
+    status: "En attente",
+    date: new Date().toLocaleString()
+  };
+  if(!o.name||!o.quantity||!o.address||!o.whatsapp) {
+    alert("Champs manquants");
+    return;
   }
+  orders.push(o);
+  save();
+  render();
+  clientName.value=quantity.value=address.value=whatsapp.value="";
+}
 
-  function clearForm() {
-    document.getElementById('clientName').value = '';
-    document.getElementById('quantity').value = '';
-    document.getElementById('address').value = '';
-    document.getElementById('whatsapp').value = '';
-  }
+function save() {
+  localStorage.setItem("orders", JSON.stringify(orders));
+}
 
-  function renderOrders() {
-    const tbody = document.getElementById('ordersTable').querySelector('tbody');
-    tbody.innerHTML = '';
-    orders.forEach(order => {
-      const row = `<tr>
-        <td>${order.id}</td>
-        <td>${order.name}</td>
-        <td>${order.product}</td>
-        <td>${order.quantity}</td>
-        <td>${order.address}</td>
-        <td>${order.whatsapp}</td>
-        <td>${order.status}</td>
-        <td>${order.date}</td>
-      </tr>`;
-      tbody.innerHTML += row;
-    });
-  }
+function updateStatus(i,val){
+  orders[i].status = val;
+  save(); render();
+}
 
-  function renderClients() {
-    const clients = {};
-    orders.forEach(o => {
-      if(!clients[o.whatsapp]) clients[o.whatsapp] = {name: o.name, whatsapp: o.whatsapp, count:0, products:[], last: ''};
-      clients[o.whatsapp].count++;
-      clients[o.whatsapp].products.push(o.product);
-      clients[o.whatsapp].last = o.date;
-    });
-    const tbody = document.getElementById('clientsTable').querySelector('tbody');
-    tbody.innerHTML = '';
-    Object.values(clients).forEach(c => {
-      const row = `<tr>
-        <td>${c.name}</td>
-        <td>${c.whatsapp}</td>
-        <td>${c.count}</td>
-        <td>${c.products.join(', ')}</td>
-        <td>${c.last}</td>
-      </tr>`;
-      tbody.innerHTML += row;
-    });
-  }
+function openWA(num){
+  window.open("https://wa.me/"+num.replace("+",""),"_blank");
+}
 
-  function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('JAMBO SAMAKI - Commandes', 10, 10);
-    let y = 20;
-    orders.forEach(o => {
-      doc.setFontSize(12);
-      doc.text(`${o.id}. ${o.name} | ${o.product} | ${o.quantity} | ${o.address} | ${o.whatsapp} | ${o.status} | ${o.date}`, 10, y);
-      y+=10;
-      if(y>280){ doc.addPage(); y=20; }
-    });
-    doc.save('commandes-jambo-samaki.pdf');
-  }
+function render(){
+  const t = document.getElementById("ordersTable");
+  t.innerHTML="";
+  orders.forEach((o,i)=>{
+    t.innerHTML+=`
+<tr>
+<td>${i+1}</td>
+<td>${o.name}</td>
+<td>${o.product}</td>
+<td>${o.quantity}</td>
+<td>${o.address}</td>
+<td>${o.whatsapp}</td>
+<td>
+<select class="status" onchange="updateStatus(${i},this.value)">
+<option ${o.status=="En attente"?"selected":""}>En attente</option>
+<option ${o.status=="En livraison"?"selected":""}>En livraison</option>
+<option ${o.status=="Livré"?"selected":""}>Livré</option>
+<option ${o.status=="Annulé"?"selected":""}>Annulé</option>
+</select>
+</td>
+<td><button class="whatsapp-btn" onclick="openWA('${o.whatsapp}')">WhatsApp</button></td>
+</tr>`;
+  });
 
-  // Initial render
-  renderOrders();
-  renderClients();
+  const clients={};
+  orders.forEach(o=>{
+    if(!clients[o.whatsapp]) clients[o.whatsapp]={name:o.name,count:0,prods:[],last:""};
+    clients[o.whatsapp].count++;
+    clients[o.whatsapp].prods.push(o.product);
+    clients[o.whatsapp].last=o.date;
+  });
+
+  const c = document.getElementById("clientsTable");
+  c.innerHTML="";
+  Object.values(clients).forEach(cl=>{
+    c.innerHTML+=`
+<tr>
+<td>${cl.name}</td>
+<td>${Object.keys(clients).find(k=>clients[k]==cl)}</td>
+<td>${cl.count}</td>
+<td>${cl.prods.join(", ")}</td>
+<td>${cl.last}</td>
+</tr>`;
+  });
+}
+
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
+  let y=10;
+  pdf.text("JAMBO SAMAKI – Commandes",10,y);
+  y+=10;
+  orders.forEach(o=>{
+    pdf.text(`${o.name} | ${o.product} | ${o.quantity} | ${o.status}`,10,y);
+    y+=8;
+    if(y>280){pdf.addPage();y=10;}
+  });
+  pdf.save("jambo-samaki-commandes.pdf");
+}
+
+render();
 </script>
 
 </body>
